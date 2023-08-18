@@ -6,7 +6,7 @@ This repo is to dump my linux training resources, assignments, tests, ideas etc,
 
 ## First assignment
 
-entrypoint usermanager.sh
+entrypoint user-manager.sh
 
 ### Assignment description
 create a user
