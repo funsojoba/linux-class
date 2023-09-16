@@ -1,3 +1,27 @@
+#!/bin/bash
+
+FILE_DIR = $1
+
+if [[ $FILE_DIR -d]]; then
+    echo "File path already exists"
+
+
+
+touch config.py manage.py requirements.txt
+
+cat <<EOL > requirements.txt
+Flask
+Flask-RESTful
+Flask-Cors
+Flask-Migrate
+Flask-JWT-Extended
+Flask-SQLAlchemy
+Flask-Marshmallow
+EOL
+
+touch .gitignore
+
+cat <<EOL > .gitignore
 # Created by https://www.toptal.com/developers/gitignore/api/flask
 # Edit at https://www.toptal.com/developers/gitignore?templates=flask
 
@@ -11,7 +35,7 @@ instance/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*.class
+*$py.class
 .DS_Store
 
 # C extensions
@@ -169,3 +193,113 @@ cython_debug/
 #.idea/
 
 # End of https://www.toptal.com/developers/gitignore/api/flask
+EOL
+
+cat <<EOL > config.py
+import os
+
+SECRET_KEY = 'your_secret_key'
+SQLALCHEMY_DATABASE_URI = 'your_database_uri'
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+JWT_SECRET_KEY = 'your_jwt_secret_key'
+EOL
+
+
+mkdir app && cd app
+touch __init__.py models.py
+
+cat <<EOL > __init__.py
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager
+from flask_cors import CORS
+
+from app.routes.auth import SignupResource
+
+app = Flask(__name__)
+app.config.from_object('config')
+db = SQLAlchemy(app)
+jwt = JWTManager(app)
+CORS(app)
+
+
+api.add_resource(SignupResource, '/signup')
+
+# Import and register your API routes here
+
+if __name__ == '__main__':
+    app.run()
+EOL
+
+cat <<EOL > models.py
+from app import db
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
+
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+EOL
+
+
+
+mkdir test routes schemas
+
+cd schemas
+touch user_schema.py
+
+cat <<EOL > user_schema.py
+from marshmallow import Schema, fields
+
+class UserSchema(Schema):
+    id = fields.Int(dump_only=True)
+    username = fields.Str(required=True)
+    password = fields.Str(required=True)
+EOL
+
+
+cd ../routes 
+touch __init__.py auth.py
+
+cat <<EOL > auth.py
+from flask import request
+from flask_restful import Resource
+from flask_jwt_extended import create_access_token
+from app import db
+from app.models import User
+from app.schemas.user_schema import UserSchema
+
+user_schema = UserSchema()
+
+class SignupResource(Resource):
+    def post(self):
+        try:
+            data = user_schema.load(request.get_json())
+
+            username = data['username']
+            password = data['password']
+
+            if User.query.filter_by(username=username).first():
+                return {'message': 'Username already exists'}, 400
+
+            user = User(username=username, password=password)
+            db.session.add(user)
+            db.session.commit()
+
+            access_token = create_access_token(identity=user.id)
+            return {'message': 'User registered successfully', 'access_token': access_token}, 201
+        except Exception as e:
+            return {'message': 'Error occurred while registering user', 'error': str(e)}, 500
+EOL
+
+
+echo "A flask app has been spun up for you, you can edit the folders and files as you please and run the following code for your db migarion"
+echo "python3 -m venv venv"
+echo "source venv/bin/activate  #for Mac users" 
+echo "pip install -r requirements.txt"
+echo "flask db init"
+echo "flask db migrate"
+echo "flask db upgrade"
