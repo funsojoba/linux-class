@@ -1,11 +1,22 @@
 #!/bin/bash
 
-FILE_DIR = $1
-
-if [[ $FILE_DIR -d]]; then
-    echo "File path already exists"
+FILE_DIR=$1
 
 
+if [ -d "$1" ]; then
+    echo "$(tput setaf 1)/$1 is an existing directory.$(tput sgr0)"
+fi
+
+if [ -z "$1" ]; then
+    echo "$(tput setaf 1)initiating flask app in current directory . . .$(tput sgr0)"
+else
+    echo "$(tput setaf 1)initiating flask app in $1 directory . . .$(tput sgr0)"
+    mkdir $1
+    cd $1
+fi
+
+
+# create files in root directory
 
 touch config.py manage.py requirements.txt
 
@@ -19,8 +30,49 @@ Flask-SQLAlchemy
 Flask-Marshmallow
 EOL
 
+
+# content for manage.py file
+cat <<EOL > manage.py 
+import os
+import unittest
+
+from flask_migrate import Migrate, MigrateCommand
+from flask_script import Manager
+
+from app.main import create_app, db
+
+app = create_app(os.getenv('BOILERPLATE_ENV') or 'dev')
+
+app.app_context().push()
+
+manager = Manager(app)
+
+migrate = Migrate(app, db)
+
+manager.add_command('db', MigrateCommand)
+
+@manager.command
+def run():
+    app.run()
+
+@manager.command
+def test():
+    """Runs the unit tests."""
+    tests = unittest.TestLoader().discover('app/test', pattern='test*.py')
+    result = unittest.TextTestRunner(verbosity=2).run(tests)
+    if result.wasSuccessful():
+        return 0
+    return 1
+
+if __name__ == '__main__':
+    manager.run()
+
+EOL
+
+# git init
 touch .gitignore
 
+# content for gitignore
 cat <<EOL > .gitignore
 # Created by https://www.toptal.com/developers/gitignore/api/flask
 # Edit at https://www.toptal.com/developers/gitignore?templates=flask
@@ -195,6 +247,7 @@ cython_debug/
 # End of https://www.toptal.com/developers/gitignore/api/flask
 EOL
 
+# content for config file
 cat <<EOL > config.py
 import os
 
@@ -203,6 +256,10 @@ SQLALCHEMY_DATABASE_URI = 'your_database_uri'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 JWT_SECRET_KEY = 'your_jwt_secret_key'
 EOL
+
+
+# =====================  #
+
 
 
 mkdir app && cd app
@@ -245,11 +302,10 @@ class User(db.Model):
 EOL
 
 
-
 mkdir test routes schemas
 
 cd schemas
-touch user_schema.py
+touch user_schema.py __init__.py
 
 cat <<EOL > user_schema.py
 from marshmallow import Schema, fields
@@ -295,11 +351,14 @@ class SignupResource(Resource):
             return {'message': 'Error occurred while registering user', 'error': str(e)}, 500
 EOL
 
+cd ../test && touch __init__.py
 
-echo "A flask app has been spun up for you, you can edit the folders and files as you please and run the following code for your db migarion"
-echo "python3 -m venv venv"
-echo "source venv/bin/activate  #for Mac users" 
-echo "pip install -r requirements.txt"
-echo "flask db init"
-echo "flask db migrate"
-echo "flask db upgrade"
+
+echo "$(tput setaf 2)A flask app has been spun up for you, you can edit the folders and files as you please and run the following code for your db migarion.$(tput sgr0)"
+
+echo "$(tput setaf 2)python3 -m venv venv$(tput sgr0)"
+echo "$(tput setaf 2)source venv/bin/activate  #for Mac users$(tput sgr0)" 
+echo "$(tput setaf 2)pip install -r requirements.txt$(tput sgr0)"
+echo "$(tput setaf 2)flask db init$(tput sgr0)"
+echo "$(tput setaf 2)flask db migrate$(tput sgr0)"
+echo "$(tput setaf 2)flask db upgrade$(tput sgr0)"
